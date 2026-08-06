@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* Warm off-white app background, matching the reference screens */
+  --color-canvas: #f7f5f1;
+  --color-card: #ffffff;
+  --color-border: #e7e4de;
+
+  --color-ink: #17171a;
+  --color-muted: #8a8a82;
+  --color-muted-2: #a8a89f;
+
+  --color-money-in: #1a7a45;
+  --color-money-out: #b3261e;
+
+  --color-credit-bg: #e3f5e9;
+  --color-credit-text: #1a7a45;
+  --color-debit-bg: #fbe7e6;
+  --color-debit-text: #b3261e;
+
+  --color-badge-admin-bg: #e4ecfb;
+  --color-badge-admin-text: #2953b3;
+  --color-badge-user-bg: #f1f0eb;
+  --color-badge-user-text: #6b6b62;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Consistent focus ring for keyboard users across custom controls */
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
