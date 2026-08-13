@@ -3,8 +3,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Clients from "./pages/Clients";
-import ClientForm from "./pages/ClientForm";
+import Rooms from "./pages/Rooms";
+import Bookings from "./pages/Bookings";
+import BookingForm from "./pages/BookingForm";
 import Expenses from "./pages/Expenses";
 import ExpenseForm from "./pages/ExpenseForm";
 import Users from "./pages/Users";
@@ -12,7 +13,7 @@ import AddUser from "./pages/AddUser";
 
 function LoginOrRedirect() {
   const { user } = useAuth();
-  if (user) return <Navigate to={user.role === "ADMIN" ? "/dashboard" : "/clients"} replace />;
+  if (user) return <Navigate to={user.role === "ADMIN" ? "/dashboard" : "/bookings"} replace />;
   return <Login />;
 }
 
@@ -29,9 +30,9 @@ export default function App() {
         </Route>
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/clients/new" element={<ClientForm />} />
-          <Route path="/clients/:id/edit" element={<ClientForm />} />
+          <Route path="/rooms" element={<Rooms />} />
+          <Route path="/bookings" element={<Bookings />} />
+          <Route path="/bookings/new" element={<BookingForm />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/expenses/new" element={<ExpenseForm />} />
           <Route path="/expenses/:id/edit" element={<ExpenseForm />} />

@@ -26,8 +26,11 @@ export default function Navbar() {
               Dashboard
             </NavLink>
           )}
-          <NavLink to="/clients" className={linkClass}>
-            Clients
+          <NavLink to="/rooms" className={linkClass}>
+            Rooms
+          </NavLink>
+          <NavLink to="/bookings" className={linkClass}>
+            Bookings
           </NavLink>
           <NavLink to="/expenses" className={linkClass}>
             Expenses

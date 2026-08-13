@@ -57,19 +57,39 @@ export default function Dashboard() {
         <p className="mt-10 text-sm text-[var(--color-muted)]">Loading summary…</p>
       ) : summary ? (
         <>
+          {summary.overdueCount > 0 && (
+            <div className="mt-6 rounded-xl border border-[var(--color-debit-text)] bg-[var(--color-debit-bg)] px-6 py-4">
+              <p className="text-sm font-semibold text-[var(--color-debit-text)]">
+                Attention required — {summary.overdueCount} overdue{" "}
+                {summary.overdueCount === 1 ? "guest" : "guests"}
+              </p>
+              <ul className="mt-2 space-y-1">
+                {summary.overdueBookings.map((b) => (
+                  <li key={b.id} className="text-sm text-[var(--color-debit-text)]">
+                    Room {b.room.roomNumber} — {b.guest.fullName} — expected checkout{" "}
+                    {formatDateTime(b.expectedCheckOut)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard label="Total Users" value={String(summary.totalUsers)} />
-            <StatCard label="Clients Received" value={String(summary.totalClients)} />
             <StatCard label="Total Income" value={formatMoney(summary.totalIncome)} accent="in" />
             <StatCard label="Total Expenses" value={formatMoney(summary.totalExpenses)} accent="out" />
+            <StatCard label="Net Income" value={formatMoney(summary.netIncome)} />
+            <StatCard
+              label="Occupancy"
+              value={`${summary.occupancyRate}% (${summary.roomsOccupied}/${summary.roomsTotal})`}
+            />
           </div>
 
           <section className="mt-10 bg-[var(--color-card)] rounded-xl border border-[var(--color-border)]">
             <div className="px-6 py-5 border-b border-[var(--color-border)]">
-              <h2 className="font-semibold">Clients Received</h2>
+              <h2 className="font-semibold">Checked in Today</h2>
             </div>
-            {summary.clients.length === 0 ? (
-              <p className="px-6 py-8 text-sm text-[var(--color-muted)]">No clients recorded for this date.</p>
+            {summary.bookings.length === 0 ? (
+              <p className="px-6 py-8 text-sm text-[var(--color-muted)]">No check-ins recorded for this date.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -78,20 +98,20 @@ export default function Dashboard() {
                       <th className="px-6 py-3 font-medium">Guest</th>
                       <th className="px-6 py-3 font-medium">Room</th>
                       <th className="px-6 py-3 font-medium">Nights</th>
-                      <th className="px-6 py-3 font-medium">Total</th>
+                      <th className="px-6 py-3 font-medium">Paid</th>
                       <th className="px-6 py-3 font-medium">Logged by</th>
-                      <th className="px-6 py-3 font-medium">Date</th>
+                      <th className="px-6 py-3 font-medium">Check-in</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {summary.clients.map((c) => (
-                      <tr key={c.id} className="border-b border-[var(--color-border)] last:border-0">
-                        <td className="px-6 py-3.5">{c.guestName}</td>
-                        <td className="px-6 py-3.5">{c.roomNo}</td>
-                        <td className="px-6 py-3.5">{c.nights}</td>
-                        <td className="px-6 py-3.5 tabular-nums">{formatMoney(c.total)}</td>
-                        <td className="px-6 py-3.5 text-[var(--color-muted)]">{c.createdBy.fullName}</td>
-                        <td className="px-6 py-3.5 text-[var(--color-muted)]">{formatDateTime(c.createdAt)}</td>
+                    {summary.bookings.map((b) => (
+                      <tr key={b.id} className="border-b border-[var(--color-border)] last:border-0">
+                        <td className="px-6 py-3.5">{b.guest.fullName}</td>
+                        <td className="px-6 py-3.5">{b.room.roomNumber}</td>
+                        <td className="px-6 py-3.5">{b.nights}</td>
+                        <td className="px-6 py-3.5 tabular-nums">{formatMoney(b.amountPaid)}</td>
+                        <td className="px-6 py-3.5 text-[var(--color-muted)]">{b.createdBy.fullName}</td>
+                        <td className="px-6 py-3.5 text-[var(--color-muted)]">{formatDateTime(b.checkIn)}</td>
                       </tr>
                     ))}
                   </tbody>
