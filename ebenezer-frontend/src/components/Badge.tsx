@@ -1,5 +1,5 @@
 interface BadgeProps {
-  tone: "credit" | "debit" | "admin" | "user";
+  tone: "credit" | "debit" | "admin" | "user" | "available" | "occupied" | "warn" | "neutral";
   children: React.ReactNode;
 }
 
@@ -8,6 +8,10 @@ const toneClasses: Record<BadgeProps["tone"], string> = {
   debit: "bg-[var(--color-debit-bg)] text-[var(--color-debit-text)]",
   admin: "bg-[var(--color-badge-admin-bg)] text-[var(--color-badge-admin-text)]",
   user: "bg-[var(--color-badge-user-bg)] text-[var(--color-badge-user-text)]",
+  available: "bg-[var(--color-credit-bg)] text-[var(--color-credit-text)]",
+  occupied: "bg-[var(--color-badge-admin-bg)] text-[var(--color-badge-admin-text)]",
+  warn: "bg-[var(--color-debit-bg)] text-[var(--color-debit-text)]",
+  neutral: "bg-[var(--color-badge-user-bg)] text-[var(--color-badge-user-text)]",
 };
 
 export default function Badge({ tone, children }: BadgeProps) {
