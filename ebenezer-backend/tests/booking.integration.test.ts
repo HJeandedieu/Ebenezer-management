@@ -123,29 +123,112 @@ describe("bookings API", () => {
     expect(again.status).toBe(409);
   });
 
-  it("scopes a worker's booking list to their own entries, but admin sees all", async () => {
-    const worker = await createTestUser("WORKER");
+  it("lets any authenticated user (worker or admin) see every booking, not just their own", async () => {
+    const workerA = await createTestUser("WORKER");
+    const workerB = await createTestUser("WORKER");
     const admin = await createTestUser("ADMIN");
-    const room = await createTestRoom({ roomNumber: "304", pricePerNight: 20000 });
+    const roomA = await createTestRoom({ roomNumber: "304", pricePerNight: 20000 });
+    const roomB = await createTestRoom({ roomNumber: "306", pricePerNight: 20000 });
     const now = Date.now();
 
-    await request(app)
+    const createdA = await request(app)
       .post("/api/bookings")
-      .set("Authorization", `Bearer ${worker.token}`)
+      .set("Authorization", `Bearer ${workerA.token}`)
       .send({
-        roomId: room.id,
-        guest: { fullName: "Worker's Guest" },
+        roomId: roomA.id,
+        guest: { fullName: "Worker A's Guest" },
         checkIn: isoDaysFromNow(now, 0),
         expectedCheckOut: isoDaysFromNow(now, 1),
         amountCash: 20000,
         amountMomo: 0,
       });
+    expect(createdA.status).toBe(201);
 
-    const workerList = await request(app).get("/api/bookings").set("Authorization", `Bearer ${worker.token}`);
-    expect(workerList.body).toHaveLength(1);
+    const createdB = await request(app)
+      .post("/api/bookings")
+      .set("Authorization", `Bearer ${workerB.token}`)
+      .send({
+        roomId: roomB.id,
+        guest: { fullName: "Worker B's Guest" },
+        checkIn: isoDaysFromNow(now, 0),
+        expectedCheckOut: isoDaysFromNow(now, 1),
+        amountCash: 20000,
+        amountMomo: 0,
+      });
+    expect(createdB.status).toBe(201);
+
+    const bothIds = [createdA.body.id, createdB.body.id];
+
+    const workerAList = await request(app).get("/api/bookings").set("Authorization", `Bearer ${workerA.token}`);
+    expect(workerAList.body).toHaveLength(2);
+    expect(workerAList.body.map((b: { id: string }) => b.id).sort()).toEqual([...bothIds].sort());
+
+    const workerBList = await request(app).get("/api/bookings").set("Authorization", `Bearer ${workerB.token}`);
+    expect(workerBList.body).toHaveLength(2);
+    expect(workerBList.body.map((b: { id: string }) => b.id).sort()).toEqual([...bothIds].sort());
 
     const adminList = await request(app).get("/api/bookings").set("Authorization", `Bearer ${admin.token}`);
-    expect(adminList.body).toHaveLength(1);
+    expect(adminList.body).toHaveLength(2);
+    expect(adminList.body.map((b: { id: string }) => b.id).sort()).toEqual([...bothIds].sort());
+  });
+
+  it("lets a different worker check out a booking they didn't create (cross-shift handoff)", async () => {
+    const workerA = await createTestUser("WORKER");
+    const workerB = await createTestUser("WORKER");
+    const room = await createTestRoom({ roomNumber: "307", pricePerNight: 20000 });
+    const now = Date.now();
+
+    const created = await request(app)
+      .post("/api/bookings")
+      .set("Authorization", `Bearer ${workerA.token}`)
+      .send({
+        roomId: room.id,
+        guest: { fullName: "Handoff Guest" },
+        checkIn: isoDaysFromNow(now, 0),
+        expectedCheckOut: isoDaysFromNow(now, 1),
+        amountCash: 20000,
+        amountMomo: 0,
+      });
+    expect(created.status).toBe(201);
+
+    const checkout = await request(app)
+      .post(`/api/bookings/${created.body.id}/checkout`)
+      .set("Authorization", `Bearer ${workerB.token}`)
+      .send({});
+
+    expect(checkout.status).toBe(200);
+    expect(checkout.body.status).toBe("CHECKED_OUT");
+  });
+
+  it("still blocks a worker (403) from editing or deleting a booking, even one they didn't create", async () => {
+    const workerA = await createTestUser("WORKER");
+    const workerB = await createTestUser("WORKER");
+    const room = await createTestRoom({ roomNumber: "308", pricePerNight: 20000 });
+    const now = Date.now();
+
+    const created = await request(app)
+      .post("/api/bookings")
+      .set("Authorization", `Bearer ${workerA.token}`)
+      .send({
+        roomId: room.id,
+        guest: { fullName: "Protected Guest" },
+        checkIn: isoDaysFromNow(now, 0),
+        expectedCheckOut: isoDaysFromNow(now, 2),
+        amountCash: 20000,
+        amountMomo: 0,
+      });
+    expect(created.status).toBe(201);
+
+    const update = await request(app)
+      .put(`/api/bookings/${created.body.id}`)
+      .set("Authorization", `Bearer ${workerB.token}`)
+      .send({ remarks: "changed by non-owner worker" });
+    expect(update.status).toBe(403);
+
+    const del = await request(app)
+      .delete(`/api/bookings/${created.body.id}`)
+      .set("Authorization", `Bearer ${workerB.token}`);
+    expect(del.status).toBe(403);
   });
 
   it("only lets an admin delete a booking, freeing the room", async () => {

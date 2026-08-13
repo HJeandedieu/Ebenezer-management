@@ -22,7 +22,6 @@ const createBookingSchema = z.object({
 });
 
 const updateBookingSchema = z.object({
-  roomId: z.string().min(1).optional(),
   checkIn: z.string().optional(),
   expectedCheckOut: z.string().optional(),
   remarks: z.string().nullable().optional(),

@@ -22,7 +22,6 @@ export interface CreateBookingInput {
 }
 
 export interface UpdateBookingInput {
-  roomId?: string;
   checkIn?: string;
   expectedCheckOut?: string;
   remarks?: string | null;
@@ -51,10 +50,11 @@ function withComputed(booking: BookingWithRelations) {
   };
 }
 
+// Any authenticated user (worker or admin) can see all bookings — workers need
+// cross-shift visibility to check out guests another worker checked in.
 export async function listBookings(user: JwtPayload, dateFilter?: string) {
   const bookings = await prisma.booking.findMany({
     where: {
-      ...(user.role === "WORKER" ? { createdById: user.id } : {}),
       ...(dateFilter
         ? { checkIn: { gte: new Date(`${dateFilter}T00:00:00`), lte: new Date(`${dateFilter}T23:59:59.999`) } }
         : {}),
@@ -87,12 +87,11 @@ export async function listOverdueBookings() {
   return bookings.map(withComputed);
 }
 
+// `user` is unused here now that visibility is unrestricted, but kept for
+// signature consistency with the other booking-service functions/controllers.
 export async function getBooking(user: JwtPayload, id: string) {
   const booking = await prisma.booking.findUnique({ where: { id }, include: bookingInclude });
   if (!booking) throw new AppError("Booking not found", 404);
-  if (user.role === "WORKER" && booking.createdById !== user.id) {
-    throw new AppError("You do not have permission to view this booking", 403);
-  }
   return withComputed(booking);
 }
 
@@ -119,9 +118,18 @@ export async function createBooking(user: JwtPayload, input: CreateBookingInput)
   const booking = await prisma.$transaction(async (tx) => {
     const guest = await tx.guest.create({ data: input.guest });
 
-    // Update the room status before creating the booking (with its included room
-    // snapshot) so the returned booking reflects the room's post-transaction state.
-    await tx.room.update({ where: { id: room.id }, data: { status: "OCCUPIED" } });
+    // Atomically claim the room: only succeeds if it's still AVAILABLE at the
+    // moment of the update. This closes the TOCTOU window between the
+    // findUnique check above and this write — two concurrent check-ins for the
+    // same room can no longer both succeed. Throwing here aborts and rolls
+    // back the whole transaction (guest included).
+    const claimed = await tx.room.updateMany({
+      where: { id: room.id, status: "AVAILABLE" },
+      data: { status: "OCCUPIED" },
+    });
+    if (claimed.count === 0) {
+      throw new AppError(`Room ${room.roomNumber} is no longer available`, 409);
+    }
 
     const created = await tx.booking.create({
       data: {
@@ -144,12 +152,12 @@ export async function createBooking(user: JwtPayload, input: CreateBookingInput)
   return withComputed(booking);
 }
 
+// `user` is unused here now that any authenticated user can check out any
+// CHECKED_IN booking (cross-shift checkout), but kept for signature
+// consistency with the other booking-service functions/controllers.
 export async function checkoutBooking(user: JwtPayload, id: string, input: CheckoutInput) {
   const booking = await prisma.booking.findUnique({ where: { id } });
   if (!booking) throw new AppError("Booking not found", 404);
-  if (user.role === "WORKER" && booking.createdById !== user.id) {
-    throw new AppError("You do not have permission to check out this booking", 403);
-  }
   if (booking.status === "CHECKED_OUT") {
     throw new AppError("Booking is already checked out", 409);
   }
@@ -184,8 +192,8 @@ export async function updateBooking(id: string, input: UpdateBookingInput) {
   const nights = computeNights(checkIn, expectedCheckOut);
 
   let bookingAmount: number | undefined;
-  if (input.roomId || input.checkIn || input.expectedCheckOut) {
-    const room = await prisma.room.findUnique({ where: { id: input.roomId ?? existing.roomId } });
+  if (input.checkIn || input.expectedCheckOut) {
+    const room = await prisma.room.findUnique({ where: { id: existing.roomId } });
     if (!room) throw new AppError("Room not found", 404);
     bookingAmount = computeBookingAmount(nights, Number(room.pricePerNight));
   }
@@ -193,7 +201,6 @@ export async function updateBooking(id: string, input: UpdateBookingInput) {
   const updated = await prisma.booking.update({
     where: { id },
     data: {
-      ...(input.roomId && { roomId: input.roomId }),
       ...(input.checkIn && { checkIn }),
       ...(input.expectedCheckOut && { expectedCheckOut }),
       nights,

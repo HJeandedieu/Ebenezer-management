@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listRooms } from "../api/rooms";
+import { listRooms, updateRoom } from "../api/rooms";
 import type { Room, RoomStatus } from "../types";
 import { formatMoney } from "../lib/format";
 import { getErrorMessage } from "../api/client";
 import Badge from "../components/Badge";
+import { useAuth } from "../context/AuthContext";
 
 const STATUS_TONE: Record<RoomStatus, "available" | "occupied" | "warn" | "neutral"> = {
   AVAILABLE: "available",
@@ -15,9 +16,12 @@ const STATUS_TONE: Record<RoomStatus, "available" | "occupied" | "warn" | "neutr
 };
 
 export default function Rooms() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -28,6 +32,18 @@ export default function Rooms() {
   }
 
   useEffect(load, []);
+
+  async function handleMarkReady(id: string) {
+    setActingId(id);
+    try {
+      await updateRoom(id, { status: "AVAILABLE" });
+      load();
+    } catch (err) {
+      alert(getErrorMessage(err));
+    } finally {
+      setActingId(null);
+    }
+  }
 
   return (
     <div>
@@ -57,6 +73,15 @@ export default function Rooms() {
               </div>
               <p className="mt-2 text-sm text-[var(--color-muted)]">{room.type ?? "Standard"}</p>
               <p className="mt-3 text-sm tabular-nums">{formatMoney(room.pricePerNight)} / night</p>
+              {isAdmin && (room.status === "CLEANING" || room.status === "MAINTENANCE") && (
+                <button
+                  onClick={() => handleMarkReady(room.id)}
+                  disabled={actingId === room.id}
+                  className="mt-4 border border-[var(--color-border)] rounded-lg px-3 py-1.5 text-xs hover:bg-[var(--color-canvas)] transition-colors disabled:opacity-60"
+                >
+                  {actingId === room.id ? "Marking ready…" : "Mark Ready"}
+                </button>
+              )}
             </div>
           ))}
         </div>

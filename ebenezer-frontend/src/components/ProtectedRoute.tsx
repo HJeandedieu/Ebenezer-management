@@ -7,7 +7,7 @@ export default function ProtectedRoute({ allow }: { allow?: Role[] }) {
   const { user } = useAuth();
 
   if (!user) return <Navigate to="/login" replace />;
-  if (allow && !allow.includes(user.role)) return <Navigate to="/clients" replace />;
+  if (allow && !allow.includes(user.role)) return <Navigate to="/bookings" replace />;
 
   return (
     <div className="min-h-screen bg-[var(--color-canvas)]">

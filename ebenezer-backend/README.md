@@ -25,7 +25,8 @@ npm run dev                 # starts on http://localhost:4000
 | Action                          | Admin | Worker                    |
 |----------------------------------|-------|----------------------------|
 | Create booking / expense entry   | ✅    | ✅                          |
-| View booking / expense entries   | ✅ all | ✅ only their own          |
+| View / check out bookings        | ✅ all | ✅ all (any worker can check out any booking, for cross-shift handoff) |
+| View expense entries             | ✅ all | ✅ only their own          |
 | Edit / delete entries            | ✅    | ❌                          |
 | Manage rooms                     | ✅    | ❌                          |
 | Manage worker accounts           | ✅    | ❌                          |
@@ -41,6 +42,21 @@ npm run dev                 # starts on http://localhost:4000
 - `GET/POST /api/expenses`, `GET /api/expenses/:id`, `PUT/DELETE /api/expenses/:id` (edit/delete = admin only)
 - `GET /api/dashboard/summary?date=YYYY-MM-DD` (admin only) — today's bookings,
   room occupancy, overdue guests, and expenses/income totals
+
+## Testing
+
+`npm test` runs the integration test suite (Vitest + Supertest) against
+whatever database `DATABASE_URL` points at — there is no separate test
+database. Every test file calls `resetDb()` in a `beforeEach`, which deletes
+**all rows** from `payments`, `bookings`, `guests`, `rooms`, `expenses`, and
+`users` before each test runs.
+
+**Never point `DATABASE_URL` at a database containing real data when running
+`npm test`.** `resetDb()` refuses to run unless the URL contains `localhost`
+or `127.0.0.1` as a guard, but that only protects against pointing at an
+obviously remote host — it will still happily wipe a local dev database with
+real seeded/manual data in it (this has happened once already, during manual
+verification). Use a dedicated local database for running tests.
 
 ## Data model
 

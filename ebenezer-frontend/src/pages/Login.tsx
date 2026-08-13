@@ -16,7 +16,7 @@ export default function Login() {
     try {
       const user = await login(email, password);
       // Role decides the landing page — no separate admin login flow.
-      navigate(user.role === "ADMIN" ? "/dashboard" : "/clients");
+      navigate(user.role === "ADMIN" ? "/dashboard" : "/bookings");
     } catch (err) {
       setError(getErrorMessage(err));
     }
