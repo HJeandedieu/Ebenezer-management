@@ -12,6 +12,25 @@ enum Role {
   WORKER
 }
 
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  CLEANING
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  MOMO
+}
+
 model User {
   id        String   @id @default(uuid())
   fullName  String
@@ -21,32 +40,78 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clients  Client[]
+  bookings Booking[]
   expenses Expense[]
 
   @@map("users")
 }
 
-// One row per digitized "Daily Income" entry from the paper register
-model Client {
-  id          String    @id @default(uuid())
-  date        DateTime  @db.Date
-  roomNo      String
-  guestName   String
-  checkIn     DateTime
-  checkOut    DateTime
-  nights      Int // length of stay — the new digital-only field
-  amountCash  Decimal   @default(0) @db.Decimal(10, 2)
-  amountMomo  Decimal   @default(0) @db.Decimal(10, 2)
-  total       Decimal   @default(0) @db.Decimal(10, 2)
-  remarks     String?
+model Room {
+  id            String     @id @default(uuid())
+  roomNumber    String     @unique
+  type          String?
+  pricePerNight Decimal    @default(0) @db.Decimal(10, 2)
+  status        RoomStatus @default(AVAILABLE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  bookings Booking[]
+
+  @@map("rooms")
+}
+
+model Guest {
+  id                   String   @id @default(uuid())
+  fullName             String
+  phone                String?
+  nationality          String?
+  identificationType   String?
+  identificationNumber String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@map("guests")
+}
+
+// One booking = one guest's stay in one room, from check-in to (eventual) checkout.
+model Booking {
+  id               String        @id @default(uuid())
+  guestId          String
+  guest            Guest         @relation(fields: [guestId], references: [id])
+  roomId           String
+  room             Room          @relation(fields: [roomId], references: [id])
+  checkIn          DateTime
+  expectedCheckOut DateTime
+  actualCheckOut   DateTime?
+  nights           Int
+  bookingAmount    Decimal       @default(0) @db.Decimal(10, 2)
+  status           BookingStatus @default(CHECKED_IN)
+  remarks          String?
+
+  payments Payment[]
 
   createdBy   User     @relation(fields: [createdById], references: [id])
   createdById String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("clients")
+  @@map("bookings")
+}
+
+// One row per cash/MoMo payment recorded against a booking.
+model Payment {
+  id        String        @id @default(uuid())
+  bookingId String
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  reference String?
+  paidAt    DateTime      @default(now())
+  createdAt DateTime      @default(now())
+
+  @@map("payments")
 }
 
 // One row per digitized "Daily Expenses" entry (supplies, etc.)
