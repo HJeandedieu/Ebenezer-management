@@ -8,6 +8,7 @@ import userRoutes from "./routes/user.routes";
 import clientRoutes from "./routes/client.routes";
 import expenseRoutes from "./routes/expense.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
+import roomRoutes from "./routes/room.routes";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/rooms", roomRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
